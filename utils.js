@@ -1,5 +1,5 @@
 const Web3 = require("web3")
-const web3Default = new Web3('http://178.128.116.31:8545')
+const web3Default = new Web3('https://ropsten.infura.io/v3/8a6aa3e1424c42ec9e33ae552c4d9551') //http://178.128.116.31:8545 http://127.0.0.1:7545
 const EthUtil = require('ethereumjs-util');
 const Transaction = require('ethereumjs-tx')
 const utils = require('web3-utils')
@@ -33,7 +33,6 @@ const getNonce = async (address) => {
 }
 
 const getBlockNumber = async () => {
-
     return await web3Default.eth.getBlockNumber()
 }
 
@@ -44,7 +43,8 @@ const getChainId = async () => {
 
 const getPastLogs = async () => {
     const lastBlock = await getBlockNumber();
-    const logs = await web3Default.eth.getPastLogs({ fromBlock: lastBlock - 100, toBlock: lastBlock });
+    const logs = await web3Default.eth.getPastLogs({ fromBlock: 0, toBlock: lastBlock })
+    console.log({ logs });
     const events = processLogs(logs)
     console.log(events);
 }
@@ -96,13 +96,18 @@ const sendTransaction = async (privateKey, to, amount, dataObj) => {
     if (amount && balance < amount) {
         console.log('xxxx ERROR : balance < amount');
     }
+    var _amountHex
+    if (amount) {
+        _amountHex = Web3.utils.toWei(amount.toString())
+    }
 
     let gasPrice = await web3Default.eth.getGasPrice();
     gasPrice = toBN(gasPrice);
     gasPrice = toBN(gasPrice)
         .mul(toBN('11'))
         .div(toBN('10'));
-    const _amountHex = Web3.utils.toWei(amount.toString())
+
+
 
     const txObj = {
         nonce: Web3.utils.toHex(nonce.toString()),
@@ -142,10 +147,14 @@ const sendCoin = async (privateKey, to, amount) => {
 }
 
 const sendContractFunc = async (privateKey, contractAddress, contract, funcName, param) => {
-    const dataObj = await contract.methods[funcName](param);
-    const txHash = await sendTransaction(privateKey, contractAddress, contract, null, dataObj);
+    const BigNumber = require('bignumber.js');
+    const priceZoom = Web3.utils.toWei(`100`);
+    const dataObj = await contract.methods[funcName]('0x1Bf87D4d8049AEd774Fe118971e87a315819e772', new BigNumber(priceZoom));
+    const txHash = await sendTransaction(privateKey, contractAddress, null, dataObj);
     console.log({ txHash });
 }
+
+
 
 
 
@@ -163,12 +172,12 @@ const processLogs = (logs) => {
 
 
 
-const dexJson = require('./contracts/Dex.json')
+const json = require('./contract/build/contracts/TokenTest.json')
 const decodeLogPair = (log) => {
     try {
         const event = {};
 
-        for (const abi of dexJson.abi) {
+        for (const abi of json.abi) {
             if (abi.type === 'event') {
                 const signature = web3Default.eth.abi.encodeEventSignature(abi);
                 event[signature] = abi;
@@ -209,21 +218,26 @@ const decodeLogPair = (log) => {
 
 
 const getPastEvents = async (contract) => {
-    const lastBlock = await getBlockNumber();
 
-    const events = await contract.getPastEvents('allEvents', { filter: { fromBlock: lastBlock - 100, toBlock: 'latest' } });
+    const events = await contract.getPastEvents('allEvents', {
+        filter: {},
+        fromBlock: 0,
+        toBlock: 'latest'
 
+    });
     console.log(events);
+    return events
 }
 
 module.exports = {
     privateKeyToAccount,
-    web3Default,
     getPastLogs,
     getPastEvents,
     sendCoin,
     sendContractFunc,
     getGasPriceEth,
     getGasPrice,
-    isAddress
+    isAddress,
+    getBlockNumber,
+    web3Default
 }
