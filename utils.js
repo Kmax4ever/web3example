@@ -29,7 +29,7 @@ async function getBalance(address) {
 }
 
 const getNonce = async (address) => {
-    return await web3Default.eth.getTransactionCount(address)
+    return await web3Default.eth.getTransactionCount(address, "pending")
 }
 
 const getBlockNumber = async () => {
@@ -43,7 +43,7 @@ const getChainId = async () => {
 
 const getPastLogs = async () => {
     const lastBlock = await getBlockNumber();
-    const logs = await web3Default.eth.getPastLogs({ fromBlock: 0, toBlock: lastBlock })
+    const logs = await web3Default.eth.getPastLogs({ fromBlock: lastBlock - 300, toBlock: lastBlock })
     console.log({ logs });
     const events = processLogs(logs)
     console.log(events);
@@ -104,8 +104,8 @@ const sendTransaction = async (privateKey, to, amount, dataObj) => {
     let gasPrice = await web3Default.eth.getGasPrice();
     gasPrice = toBN(gasPrice);
     gasPrice = toBN(gasPrice)
-        .mul(toBN('11'))
-        .div(toBN('10'));
+        .mul(toBN('2'))
+       // .div(toBN('8')); //10
 
 
 
@@ -114,7 +114,7 @@ const sendTransaction = async (privateKey, to, amount, dataObj) => {
         from: address,
         value: Web3.utils.toHex(_amountHex || 0),
         gasPrice: Web3.utils.toHex(gasPrice),
-        gasLimit: Web3.utils.toHex('1000000'),
+        gasLimit: Web3.utils.toHex('1000000'), //1000000
         to,
     };
 
@@ -146,14 +146,25 @@ const sendCoin = async (privateKey, to, amount) => {
 
 }
 
-const sendContractFunc = async (privateKey, contractAddress, contract, funcName, param) => {
-    const BigNumber = require('bignumber.js');
-    const priceZoom = Web3.utils.toWei(`100`);
-    const dataObj = await contract.methods[funcName]('0x1Bf87D4d8049AEd774Fe118971e87a315819e772', new BigNumber(priceZoom));
+const fromWei = (value) => {
+    return Web3.utils.fromWei(value.toString())
+}
+
+const toWei = (value) => {
+    return Web3.utils.toWei(value.toString())
+}
+
+const sendContractFunc = async (privateKey, contractAddress, contract, funcName, params) => {
+    const dataObj = await contract.methods[funcName](...params);
     const txHash = await sendTransaction(privateKey, contractAddress, null, dataObj);
     console.log({ txHash });
 }
 
+
+const contractCall = async (contract, funcName, params) => {
+    const rs = await contract.methods[funcName](...params).call();
+    return rs
+}
 
 
 
@@ -172,7 +183,7 @@ const processLogs = (logs) => {
 
 
 
-const json = require('./contract/build/contracts/TokenTest.json')
+const json = require('./contract/build/contracts/Ktoken.json')
 const decodeLogPair = (log) => {
     try {
         const event = {};
@@ -239,5 +250,8 @@ module.exports = {
     getGasPrice,
     isAddress,
     getBlockNumber,
-    web3Default
+    web3Default,
+    fromWei,
+    toWei,
+    contractCall
 }
